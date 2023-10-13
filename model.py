@@ -72,3 +72,6 @@ class Model:
 if __name__ == "__main__":
     sample_list = ['XAUUSD', 'PALUSD', 'SVRUSD']
     print(generate_sample_data(sample_list, 40, 2))
+    # model = Model(["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"], 12, 1)
+    # model.train(use_generated_data=True)
+    # model.save("model1")
