@@ -68,3 +68,7 @@ class Model:
         for ticker in self.tickers:
             full_path = path_to_dir / ticker
             self.models[ticker].save(full_path)
+
+if __name__ == "__main__":
+    sample_list = ['XAUUSD', 'PALUSD', 'SVRUSD']
+    print(generate_sample_data(sample_list, 40, 2))
