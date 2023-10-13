@@ -12,7 +12,7 @@ class FirebaseStorageHook(BaseHook):
         self._conn = self.get_connection(self.firebase_conn_id)
 
     
-    def get_app(self):
+    def _set_app(self):
         if not self._fb_app:
             cred = firebase_admin.credentials.Certificate(self._conn.extra_dejson.get('key_path'))
             self._fb_app = firebase_admin.initialize_app(cred)
@@ -20,8 +20,8 @@ class FirebaseStorageHook(BaseHook):
 
     def get_bucket(self):
         if not self._fb_app:
-            self.get_app()
-            
+            self._set_app()
+
         if not self.bucket:
             self.bucket = storage.bucket(f'{self._conn.extra_dejson.get("project")}.appspot.com')
 
@@ -32,6 +32,8 @@ class FirebaseStorageHook(BaseHook):
         """
         Writes data to cached client
         """
+        if not self.bucket:
+            self.get_bucket()
         
         storage_filename = f'{dir}/{filename}'
 
@@ -49,6 +51,8 @@ class FirebaseStorageHook(BaseHook):
         """
         Reads GCS file data and returns it as serialized string.
         """
+        if not self.bucket:
+            self.get_bucket()
 
         storage_filename = f'{dir}/{filename}'
 
