@@ -24,7 +24,7 @@ class FirebaseStorageSensor(BaseSensorOperator):
 
         hook = FirebaseStorageHook()
 
-        bucket = hook.get_conn()
+        bucket = hook.get_bucket()
         self.log.info(f'Sensing in folder : {self._folder}')
         blobs = bucket.list_blobs(prefix=self._folder)
 
