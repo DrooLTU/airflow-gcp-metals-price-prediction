@@ -63,7 +63,7 @@ def _save_file(file_name, file_content, dir_path):
     os.remove(temp_file_path.name)
 
 
-def _get_pm_rates(base:str, symbols:List[str]) -> None:
+def _extract_pm_rates(base:str, symbols:List[str]) -> None:
     session = requests.Session()
     symbols_str = ','.join(symbols)
     url = f'{base_url}?api_key={API_KEY}&base={base}&currencies={symbols_str}'
@@ -74,7 +74,15 @@ def _get_pm_rates(base:str, symbols:List[str]) -> None:
         print(json_data["timestamp"])
         file_name = f'{json_data["timestamp"]}.json'
         _save_file(file_name, response.text, 'data')
+
+
+def _transform_pm_rates(data:json):
+   pass
+
+
+def _load_pm_rates():
+   pass
     
 
 if __name__ == "__main__":
-    _get_pm_rates(BASE_SYMBOL, SYMBOLS)
+    _extract_pm_rates(BASE_SYMBOL, SYMBOLS)
