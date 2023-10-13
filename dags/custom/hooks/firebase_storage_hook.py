@@ -3,18 +3,28 @@ import firebase_admin
 from firebase_admin import storage
 
 class FirebaseStorageHook(BaseHook):
+    
 
     def __init__(self, firebase_conn_id='firebase_default'):
         self.firebase_conn_id = firebase_conn_id
         self.bucket = None
         self._fb_app = None
+        self._conn = self.get_connection(self.firebase_conn_id)
 
-    def get_conn(self):
-        if not self.bucket:
-            conn = self.get_connection(self.firebase_conn_id)
-            cred = firebase_admin.credentials.Certificate(conn.extra_dejson.get('key_path'))
+    
+    def get_app(self):
+        if not self._fb_app:
+            cred = firebase_admin.credentials.Certificate(self._conn.extra_dejson.get('key_path'))
             self._fb_app = firebase_admin.initialize_app(cred)
-            self.bucket = storage.bucket(f'{conn.extra_dejson.get("project")}.appspot.com')
+
+
+    def get_bucket(self):
+        if not self._fb_app:
+            self.get_app()
+            
+        if not self.bucket:
+            self.bucket = storage.bucket(f'{self._conn.extra_dejson.get("project")}.appspot.com')
+
         return self.bucket
     
     
