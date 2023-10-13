@@ -29,7 +29,6 @@ class FirebaseStorageWriteOperator(BaseOperator):
 
         # Create a Firebase Cloud Functions hook
         fsh = FirebaseStorageHook()
-        fsh.get_conn()
 
         response = fsh.write_data(self._data, self._filename, self._dir, self._content_type, self._rewrite)
 
