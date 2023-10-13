@@ -25,9 +25,7 @@ class FirebaseStorageWriteOperator(BaseOperator):
         """
         Execute the operator.
         """
-        # Retrieve Firebase Authentication token from the Airflow connection
 
-        # Create a Firebase Cloud Functions hook
         fsh = FirebaseStorageHook()
 
         response = fsh.write_data(self._data, self._filename, self._dir, self._content_type, self._rewrite)
