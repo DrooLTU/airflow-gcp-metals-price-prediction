@@ -77,6 +77,9 @@ def _extract_pm_rates(base:str, symbols:List[str]) -> None:
 
 
 def _transform_pm_rates(data:json):
+   """
+   Divide one by the rate to get reverse for base symbol (price for one troy ounce).
+   """
    pass
 
 
