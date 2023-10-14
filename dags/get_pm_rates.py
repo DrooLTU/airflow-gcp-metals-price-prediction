@@ -45,7 +45,7 @@ dag = DAG(
 )
 
 
-def _save_file(filename, file_content, dir):
+def _save_file(filename:str, file_content:str, dir:str):
     """Saves a file to the specified directory.
 
     Args:
@@ -68,7 +68,7 @@ def _check_file_does_not_exist(filename: str, dir: str ='') -> bool:
     print(file_path)
 
     if os.path.isfile(file_path):
-        return "transform_pm_rates"
+        return "transform_existing_pm_rates"
     
     return "extract_pm_rates"
 
@@ -82,11 +82,10 @@ def _extract_pm_rates(base: str, symbols: List[str], **kwargs) -> None:
     if response.status_code == 200:
         
         json_data = json.loads(response.text)
-        print(json_data)
         datetime_object = datetime.fromtimestamp(json_data['timestamp'])
         file_name = f"{datetime_object.strftime('%Y-%m-%d-%H')}.json"
 
-        _save_file(file_name, response.text, "/opt/airflow/data/")
+        _save_file(file_name, response.text, "/opt/airflow/data/extracted")
 
 
 def _transform_pm_rates(filename: str):
@@ -96,8 +95,20 @@ def _transform_pm_rates(filename: str):
     with open(filename, "r") as f:
         json_data = json.load(f)
         rates = json_data['rates']
-        for rate in rates:
-            print(rate)
+        timestamp = json_data['timestamp']
+        transformed_data = {'timestamp': timestamp}
+        base = json_data['base']
+        
+        print(rates)
+        for rate, val in rates.items():
+            transformed_data[f'{rate}{base}'] = 1 / val
+            print(f'rate: {rate}, val: {val}')
+
+        datetime_object = datetime.fromtimestamp(timestamp)
+        file_name = f"{datetime_object.strftime('%Y-%m-%d-%H')}.jsonl"
+        _save_file(file_name, json.dumps(transformed_data), "/opt/airflow/data/transformed")
+        
+
 
 
 def _load_pm_rates():
@@ -105,9 +116,9 @@ def _load_pm_rates():
 
 
 #THIS IS NEEDE FOR NOW TO COMPENSATE FOR TIME DIFF, NEED BETTER SOLUTION
-adjusted_dth = datetime.now() - timedelta(hours=2)
+adjusted_dth = datetime.now() - timedelta(hours=1)
 adjusted_dth_str = adjusted_dth.strftime('%Y-%m-%d-%H')
-filepath = f'/opt/airflow/data/{adjusted_dth_str}.json'
+filepath = f'/opt/airflow/data/extracted/{adjusted_dth_str}.json'
 
 extracted_data_does_not_exist = BranchPythonOperator(
     task_id="extracted_data_does_not_exist",
@@ -123,16 +134,30 @@ extract_pm_rates = PythonOperator(
     op_kwargs={"base": BASE_SYMBOL, "symbols": SYMBOLS},
 )
 
-transform_pm_rates = PythonOperator(
-    task_id="transform_pm_rates",
+sense_extracted_file = FileSensor(
+    task_id="sense_extracted_file",
+    filepath=filepath,
+    dag=dag,
+)
+
+transform_existing_pm_rates = PythonOperator(
+    task_id="transform_existing_pm_rates",
+    python_callable=_transform_pm_rates,
+    dag=dag,
+    op_kwargs={"filename": filepath},
+)
+
+transform_new_pm_rates = PythonOperator(
+    task_id="transform_new_pm_rates",
     python_callable=_transform_pm_rates,
     dag=dag,
     op_kwargs={"filename": filepath},
 )
 
 
-extracted_data_does_not_exist >> [extract_pm_rates, transform_pm_rates]
+extracted_data_does_not_exist >> [extract_pm_rates, transform_existing_pm_rates]
 
+extract_pm_rates >> sense_extracted_file >> transform_new_pm_rates
 
 
 """
