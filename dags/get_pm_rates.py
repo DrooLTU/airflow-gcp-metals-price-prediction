@@ -43,10 +43,6 @@ dag = DAG(
     catchup=False,
 )
 
-def _get_execution_date_and_hour(context):
-    execution_date = context['task_instance'].execution_date
-    hour = execution_date.hour
-    return hour, execution_date
 
 def _save_file(file_name, file_content, dir_path):
   """Saves a file to the specified directory.
@@ -104,6 +100,7 @@ extract_pm_rates = PythonOperator(
     python_callable=_extract_pm_rates,
     dag=dag,
     op_kwargs={'base': BASE_SYMBOL, 'symbols': SYMBOLS},
+    trigger_rule='one_failed',
 )
     
 
