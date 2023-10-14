@@ -1,12 +1,16 @@
 import os
-import tempfile
 from dotenv import load_dotenv
-from airflow import DAG
+
+from airflow import DAG, macros
 from airflow.models import Variable
+from airflow.operators.python import PythonOperator
+from airflow.sensors.filesystem import FileSensor
+
 from datetime import datetime, timedelta
 from typing import List
 import requests
 import json
+
 
 load_dotenv()
 
@@ -39,6 +43,10 @@ dag = DAG(
     catchup=False,
 )
 
+def _get_execution_date_and_hour(context):
+    execution_date = context['task_instance'].execution_date
+    hour = execution_date.hour
+    return hour, execution_date
 
 def _save_file(file_name, file_content, dir_path):
   """Saves a file to the specified directory.
@@ -52,28 +60,23 @@ def _save_file(file_name, file_content, dir_path):
   if not os.path.exists(dir_path):
     os.makedirs(dir_path)
 
-  temp_file_path = tempfile.NamedTemporaryFile(dir=dir_path, delete=False)
+  file_path = os.path.join(dir_path, file_name)
 
-  with open(temp_file_path, "w") as f:
+  with open(file_path, "w") as f:
     f.write(file_content)
 
-  try:
-    os.replace(temp_file_path.name, os.path.join(dir_path, file_name))
-  except:
-    os.remove(temp_file_path.name)
 
-
-def _extract_pm_rates(base:str, symbols:List[str]) -> None:
+def _extract_pm_rates(base:str, symbols:List[str], **kwargs) -> None:
+    execution_date = kwargs["execution_date"]
+    hour = execution_date.hour
     session = requests.Session()
     symbols_str = ','.join(symbols)
     url = f'{base_url}?api_key={API_KEY}&base={base}&currencies={symbols_str}'
     response = session.get(url)
     print(response)
     if response.status_code == 200:
-        json_data = json.loads(response.text)
-        print(json_data["timestamp"])
-        file_name = f'{json_data["timestamp"]}.json'
-        _save_file(file_name, response.text, 'data')
+        file_name = f'{hour}.json'
+        _save_file(file_name, response.text, f'data/{ execution_date }')
 
 
 def _transform_pm_rates(data:json):
@@ -85,7 +88,36 @@ def _transform_pm_rates(data:json):
 
 def _load_pm_rates():
    pass
+
+
+filepath = """
+data/{{ ds }}/{{ execution_date.hour }}.json
+"""
+check_file_operator = FileSensor(
+    task_id='check_file',
+    filepath=filepath,
+    dag=dag
+)
+
+extract_pm_rates = PythonOperator(
+    task_id='extract_pm_rates',
+    python_callable=_extract_pm_rates,
+    dag=dag,
+    op_kwargs={'base': BASE_SYMBOL, 'symbols': SYMBOLS},
+)
     
 
-if __name__ == "__main__":
-    _extract_pm_rates(BASE_SYMBOL, SYMBOLS)
+# if __name__ == "__main__":
+#     _extract_pm_rates(BASE_SYMBOL, SYMBOLS, '12', '2023-10-14')
+
+
+check_file_operator >> extract_pm_rates
+
+"""
+Target tasks:
+IF API DATA EXISTS IN DATE/HOUR - DO NOT FETCH DATA
+IF TRANSFORMED DATA EXISTS IN DATE/HOUR - DO NOT TRANSFORM DATA (???)
+
+check_if_data_exists >> ((fetch_and_save_api_data >> bucket_sensor >> get_transform_save_data >> bucket_sensor) or ) 
+
+"""
