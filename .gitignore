@@ -5,4 +5,5 @@ transformer_lite.egg-info
 .env
 .vscode/
 data
+config
 turing-m2-s4-firebase-adminsdk-exole-07e7cc79ee.json
