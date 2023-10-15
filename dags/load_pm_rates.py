@@ -45,7 +45,6 @@ load_to_bq = GCSToBigQueryOperator(
     source_format='Parquet',
     write_disposition="WRITE_APPEND",
     schema_fields=[
-        {'name': 'timestamp', 'type': 'TIMESTAMP'},
         {'name': 'data_datetime', 'type': 'DATETIME'}, 
         {'name': 'EURUSD', 'type': 'FLOAT'},
         {'name': 'XAGUSD', 'type': 'FLOAT'},
