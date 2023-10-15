@@ -107,7 +107,7 @@ def _transform_pm_rates(filename: str):
         rates = json_data['rates']
         timestamp = json_data['timestamp']
         datetime_object = datetime.fromtimestamp(timestamp)
-        transformed_data = {'timestamp': timestamp, 'data_datetime': datetime_object.isoformat()}
+        transformed_data = {'data_datetime': datetime_object.isoformat()}
         base = json_data['base']
         
         print(rates)
