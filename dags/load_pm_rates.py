@@ -1,5 +1,6 @@
 from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
+from airflow.providers.google.cloud.transfers.local_to_bigquery import FileToBigQueryOperator
 
 from datetime import datetime, timedelta
 
@@ -23,12 +24,19 @@ dag = DAG(
     catchup=False,
 )
 
-def _load_pm_rates():
-    pass
-
-
-load_into_bigquery = PythonOperator(
-    task_id="load_into_bigquery",
-    python_callable=_load_pm_rates,
-    dag=dag,
+load_json_task = FileToBigQueryOperator(
+    task_id='load_json',
+    file_path='/opt/airflow/data/datasets/transformed_pm_rates.json',
+    destination_project_dataset_table='turing-m2-s4.precious-metals.rates',
+    schema_fields=[
+        {'name': 'timestamp', 'type': 'TIMESTAMP'}, 
+        {'name': 'EURUSD', 'type': 'FLOAT'},
+        {'name': "XAGUSD", 'type': 'FLOAT'},
+        {'name': "XAUUSD", 'type': 'FLOAT'},
+        {'name': "XPDUSD", 'type': 'FLOAT'},
+        {'name': "XPTUSD", 'type': 'FLOAT'}
+    ]
 )
+
+
+dag >> load_json_task

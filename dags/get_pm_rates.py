@@ -115,6 +115,10 @@ def _transform_pm_rates(filename: str):
         _save_file('transformed_pm_rates.json', json.dumps(transformed_data), "/opt/airflow/data/datasets")
 
 
+def _save_to_dataset():
+    pass
+
+
 #THIS IS NEEDE FOR NOW TO COMPENSATE FOR TIME DIFF, NEED BETTER SOLUTION
 adjusted_dth = datetime.now() - timedelta(hours=1)
 adjusted_dth_str = adjusted_dth.strftime('%Y-%m-%d-%H')
@@ -158,6 +162,7 @@ transform_new_pm_rates = PythonOperator(
     outlets=[TRANSFORMED_DATA]
 )
 
+#THIS IS REDUNDANT SINCE DATASET IMPLEMENTATION
 sense_transformed_file = FileSensor(
     task_id="sense_transformed_file",
     filepath=filepath_transformed,
