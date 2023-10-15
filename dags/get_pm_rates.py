@@ -12,6 +12,9 @@ from typing import List
 import requests
 import json
 
+from pyarrow import json as pa_json
+import pyarrow.parquet as pq
+
 
 load_dotenv()
 
@@ -26,7 +29,7 @@ default_args = {
     "retry_delay": timedelta(minutes=5),
 }
 
-TRANSFORMED_DATA = Dataset(f'file://opt/airflow/data/datasets/transformed_pm_rates.json')
+TRANSFORMED_DATA = Dataset(f'file://opt/airflow/data/datasets/transformed_pm_rates.parquet')
 
 BASE_SYMBOL = "USD"
 SYMBOLS = ["EUR", "XAU", "XAG", "XPD", "XPT"]
@@ -45,6 +48,11 @@ dag = DAG(
     schedule=None,
     catchup=False,
 )
+
+
+def _save_parquet(json_path:str, filename:str, dir:str):
+    table = pa_json.read_json(json_path) 
+    pq.write_table(table, f'{dir}{filename}')
 
 
 def _save_file(filename:str, file_content:str, dir:str):
@@ -98,7 +106,8 @@ def _transform_pm_rates(filename: str):
         json_data = json.load(f)
         rates = json_data['rates']
         timestamp = json_data['timestamp']
-        transformed_data = {'timestamp': timestamp}
+        datetime_object = datetime.fromtimestamp(timestamp)
+        transformed_data = {'timestamp': timestamp, 'data_datetime': datetime_object.isoformat()}
         base = json_data['base']
         
         print(rates)
@@ -107,12 +116,11 @@ def _transform_pm_rates(filename: str):
             print(f'rate: {rate}, val: {val}')
 
         #BACKUP STORE
-        datetime_object = datetime.fromtimestamp(timestamp)
         file_name = f"{datetime_object.strftime('%Y-%m-%d-%H')}.json"
         _save_file(file_name, json.dumps(transformed_data), "/opt/airflow/data/transformed")
 
         #DATASET STORE
-        _save_file('transformed_pm_rates.json', json.dumps(transformed_data), "/opt/airflow/data/datasets")
+        _save_parquet(f'/opt/airflow/data/transformed/{file_name}', 'transformed_pm_rates.parquet', '/opt/airflow/data/datasets/')
 
 
 def _save_to_dataset():

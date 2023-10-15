@@ -5,7 +5,8 @@ from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQue
 
 from datetime import datetime, timedelta
 
-TRANSFORMED_DATA = Dataset(f'file://opt/airflow/data/datasets/transformed_pm_rates.json')
+
+TRANSFORMED_DATA = Dataset(f'file://opt/airflow/data/datasets/transformed_pm_rates.parquet')
 
 default_args = {
     "owner": "Justinas",
@@ -25,29 +26,35 @@ dag = DAG(
     catchup=False,
 )
 
-load_json_to_gcs = LocalFilesystemToGCSOperator(
-    task_id='load_json_to_gcs',
-    bucket='turing-m2-s4.appspot.com',
-    src='/opt/airflow/data/datasets/transformed_pm_rates.json',
-    dst='data/transformed.json',
+
+load_to_gcs = LocalFilesystemToGCSOperator(
+    task_id='load_to_gcs',
+    bucket='t-m2s4-eu',
+    src='/opt/airflow/data/datasets/transformed_pm_rates.parquet',
+    dst='data/transformed.parquet',
     dag=dag
 )
 
-load_json_to_bq = GCSToBigQueryOperator(
-    task_id='load_json_to_bq',
-    bucket='turing-m2-s4.appspot.com',
-    source_objects=['data/transformed.json'],
+#PROLLY NEED A SENSOR HERE AS A GUARANTEE
+
+load_to_bq = GCSToBigQueryOperator(
+    task_id='load_to_bq',
+    bucket='t-m2s4-eu',
+    source_objects=['data/transformed.parquet'],
     destination_project_dataset_table='turing-m2-s4.precious_metals.rates',
+    source_format='Parquet',
+    write_disposition="WRITE_APPEND",
     schema_fields=[
-        {'name': 'timestamp', 'type': 'TIMESTAMP'}, 
+        {'name': 'timestamp', 'type': 'TIMESTAMP'},
+        {'name': 'data_datetime', 'type': 'DATETIME'}, 
         {'name': 'EURUSD', 'type': 'FLOAT'},
-        {'name': "XAGUSD", 'type': 'FLOAT'},
-        {'name': "XAUUSD", 'type': 'FLOAT'},
-        {'name': "XPDUSD", 'type': 'FLOAT'},
-        {'name': "XPTUSD", 'type': 'FLOAT'}
+        {'name': 'XAGUSD', 'type': 'FLOAT'},
+        {'name': 'XAUUSD', 'type': 'FLOAT'},
+        {'name': 'XPDUSD', 'type': 'FLOAT'},
+        {'name': 'XPTUSD', 'type': 'FLOAT'}
     ],
     dag=dag
 )
 
 
-load_json_to_gcs >> load_json_to_bq
+load_to_gcs >> load_to_bq
