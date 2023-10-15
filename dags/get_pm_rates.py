@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-from airflow import DAG
+from airflow import DAG, Dataset
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.sensors.filesystem import FileSensor
@@ -25,6 +25,8 @@ default_args = {
     "retries": 2,
     "retry_delay": timedelta(minutes=5),
 }
+
+TRANSFORMED_DATA = Dataset(f'file://opt/airflow/data/datasets/transformed_pm_rates.json')
 
 BASE_SYMBOL = "USD"
 SYMBOLS = ["EUR", "XAU", "XAG", "XPD", "XPT"]
@@ -104,20 +106,21 @@ def _transform_pm_rates(filename: str):
             transformed_data[f'{rate}{base}'] = 1 / val
             print(f'rate: {rate}, val: {val}')
 
+        #BACKUP STORE
         datetime_object = datetime.fromtimestamp(timestamp)
-        file_name = f"{datetime_object.strftime('%Y-%m-%d-%H')}.jsonl"
+        file_name = f"{datetime_object.strftime('%Y-%m-%d-%H')}.json"
         _save_file(file_name, json.dumps(transformed_data), "/opt/airflow/data/transformed")
-        
 
-def _load_pm_rates():
-    pass
+        #DATASET STORE
+        _save_file('transformed_pm_rates.json', json.dumps(transformed_data), "/opt/airflow/data/datasets")
 
 
 #THIS IS NEEDE FOR NOW TO COMPENSATE FOR TIME DIFF, NEED BETTER SOLUTION
 adjusted_dth = datetime.now() - timedelta(hours=1)
 adjusted_dth_str = adjusted_dth.strftime('%Y-%m-%d-%H')
-filepath = f'/opt/airflow/data/extracted/{adjusted_dth_str}.json'
-filepath_transformed = f'/opt/airflow/data/transformed/{adjusted_dth_str}.jsonl'
+filepath = f'opt/airflow/data/extracted/{adjusted_dth_str}.json'
+filepath_transformed = f'opt/airflow/data/transformed/{adjusted_dth_str}.json'
+
 
 extracted_data_does_not_exist = BranchPythonOperator(
     task_id="extracted_data_does_not_exist",
@@ -144,6 +147,7 @@ transform_existing_pm_rates = PythonOperator(
     python_callable=_transform_pm_rates,
     dag=dag,
     op_kwargs={"filename": filepath},
+    outlets=[TRANSFORMED_DATA]
 )
 
 transform_new_pm_rates = PythonOperator(
@@ -151,13 +155,14 @@ transform_new_pm_rates = PythonOperator(
     python_callable=_transform_pm_rates,
     dag=dag,
     op_kwargs={"filename": filepath},
+    outlets=[TRANSFORMED_DATA]
 )
 
 sense_transformed_file = FileSensor(
     task_id="sense_transformed_file",
     filepath=filepath_transformed,
     dag=dag,
-    trigger_rule='none_failed_min_one_success'
+    trigger_rule='none_failed_min_one_success',
 )
 
 
