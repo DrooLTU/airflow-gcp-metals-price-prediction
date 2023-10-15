@@ -5,7 +5,7 @@ from airflow import DAG
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.sensors.filesystem import FileSensor
-from airflow.exceptions import AirflowFailException
+
 
 from datetime import datetime, timedelta
 from typing import List
@@ -63,7 +63,7 @@ def _save_file(filename:str, file_content:str, dir:str):
         f.write(file_content)
 
 
-def _check_file_does_not_exist(filename: str, dir: str ='') -> bool:
+def _check_extracted_does_not_exist(filename: str, dir: str ='') -> bool:
     file_path = os.path.join(dir, filename)
     print(file_path)
 
@@ -109,8 +109,6 @@ def _transform_pm_rates(filename: str):
         _save_file(file_name, json.dumps(transformed_data), "/opt/airflow/data/transformed")
         
 
-
-
 def _load_pm_rates():
     pass
 
@@ -119,10 +117,11 @@ def _load_pm_rates():
 adjusted_dth = datetime.now() - timedelta(hours=1)
 adjusted_dth_str = adjusted_dth.strftime('%Y-%m-%d-%H')
 filepath = f'/opt/airflow/data/extracted/{adjusted_dth_str}.json'
+filepath_transformed = f'/opt/airflow/data/transformed/{adjusted_dth_str}.jsonl'
 
 extracted_data_does_not_exist = BranchPythonOperator(
     task_id="extracted_data_does_not_exist",
-    python_callable=_check_file_does_not_exist,
+    python_callable=_check_extracted_does_not_exist,
     dag=dag,
     op_kwargs={"filename": filepath},
 )
@@ -154,10 +153,19 @@ transform_new_pm_rates = PythonOperator(
     op_kwargs={"filename": filepath},
 )
 
+sense_transformed_file = FileSensor(
+    task_id="sense_transformed_file",
+    filepath=filepath_transformed,
+    dag=dag,
+    trigger_rule='none_failed_min_one_success'
+)
+
 
 extracted_data_does_not_exist >> [extract_pm_rates, transform_existing_pm_rates]
 
 extract_pm_rates >> sense_extracted_file >> transform_new_pm_rates
+
+[transform_existing_pm_rates, transform_new_pm_rates] >> sense_transformed_file
 
 
 """
