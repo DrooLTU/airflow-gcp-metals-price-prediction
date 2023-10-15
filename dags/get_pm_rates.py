@@ -122,8 +122,8 @@ def _save_to_dataset():
 #THIS IS NEEDE FOR NOW TO COMPENSATE FOR TIME DIFF, NEED BETTER SOLUTION
 adjusted_dth = datetime.now() - timedelta(hours=1)
 adjusted_dth_str = adjusted_dth.strftime('%Y-%m-%d-%H')
-filepath = f'opt/airflow/data/extracted/{adjusted_dth_str}.json'
-filepath_transformed = f'opt/airflow/data/transformed/{adjusted_dth_str}.json'
+filepath = f'/opt/airflow/data/extracted/{adjusted_dth_str}.json'
+filepath_transformed = f'/opt/airflow/data/transformed/{adjusted_dth_str}.json'
 
 
 extracted_data_does_not_exist = BranchPythonOperator(
@@ -143,6 +143,9 @@ extract_pm_rates = PythonOperator(
 sense_extracted_file = FileSensor(
     task_id="sense_extracted_file",
     filepath=filepath,
+    timeout=10,
+    mode="reschedule",
+    poke_interval=10,
     dag=dag,
 )
 
@@ -168,6 +171,9 @@ sense_transformed_file = FileSensor(
     filepath=filepath_transformed,
     dag=dag,
     trigger_rule='none_failed_min_one_success',
+    timeout=10,
+    mode="reschedule",
+    poke_interval=10,
 )
 
 
