@@ -72,7 +72,7 @@ class Model:
             self.models[ticker].save(full_path)
 
 
-class FirebaseStorageWriteOperator(BaseOperator):
+class TrainModelOperator(BaseOperator):
     """
     Operator to train ML model.
     """
