@@ -4,7 +4,6 @@ from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
 
 from datetime import datetime, timedelta
-from typing import List
 import json
 
 import pyarrow as pa
@@ -86,7 +85,6 @@ def _transform_pm_rates(file_path: str):
             transformed_data[f'{rate}{base}'] = 1 / val
             print(f'rate: {rate}, val: {val}')
 
-        #BACKUP STORE
         file_name = f"{datetime_object.strftime('%Y-%m-%d-%H')}.json"
         _save_file(file_name, json.dumps(transformed_data), "/opt/airflow/data/transformed/")
 
@@ -101,7 +99,7 @@ def create_transform_task(dag, file_path):
     )
 
 aggregate_task = PythonOperator(
-    task_id='aggregate_parquet_files',
+    task_id='aggregate_parquet_file',
     python_callable=_save_parquet,
     op_args=['/opt/airflow/data/transformed/', 'transformed_pm_rates', '/opt/airflow/data/datasets/'],
     dag=dag,
