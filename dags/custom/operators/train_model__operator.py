@@ -1,3 +1,4 @@
+from airflow.models import BaseOperator
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -55,6 +56,7 @@ class Model:
                 self.tickers, self.x_size, self.y_size
             )
         else:
+            """This is where I plug my data retrieval from BigQuery?"""
             raise NotImplementedError
         for ticker in self.tickers:
             dataset = data[ticker].values
@@ -68,6 +70,29 @@ class Model:
         for ticker in self.tickers:
             full_path = path_to_dir / ticker
             self.models[ticker].save(full_path)
+
+
+class FirebaseStorageWriteOperator(BaseOperator):
+    """
+    Operator to train ML model.
+    """
+    template_fields = ()
+    
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize the operator.
+
+        Args:
+
+        """
+        super().__init__(*args, **kwargs)
+
+
+    def execute(self, context):
+        """
+        Execute the operator.
+        """
+
 
 if __name__ == "__main__":
     # sample_list = ['XAUUSD', 'PALUSD', 'SVRUSD']
