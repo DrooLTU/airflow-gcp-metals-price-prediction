@@ -123,10 +123,6 @@ def _transform_pm_rates(filename: str):
         _save_parquet(f'/opt/airflow/data/transformed/{file_name}', 'transformed_pm_rates.parquet', '/opt/airflow/data/datasets/')
 
 
-def _save_to_dataset():
-    pass
-
-
 #THIS IS NEEDE FOR NOW TO COMPENSATE FOR TIME DIFF, NEED BETTER SOLUTION
 adjusted_dth = datetime.now() - timedelta(hours=1)
 adjusted_dth_str = adjusted_dth.strftime('%Y-%m-%d-%H')
