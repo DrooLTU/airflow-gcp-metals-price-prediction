@@ -1,7 +1,7 @@
 from airflow import DAG, Dataset
-from airflow.operators.python import PythonOperator
 from airflow.providers.google.cloud.transfers.local_to_gcs import LocalFilesystemToGCSOperator
 from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
+from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 
 from datetime import datetime, timedelta
 
@@ -55,5 +55,30 @@ load_to_bq = GCSToBigQueryOperator(
     dag=dag
 )
 
+#PROLLY MOVE VIEW MATERIALISATION HERE AND SET UP A SENSOR FOR THE TABLE ON TRAINER DAG
+# Convert to Variables maybe
+project_id = "turing-m2-s4"
+dataset_id = "precious_metals"
+table_id = "latest_12_table"
+view_id = "latest_12"
 
-load_to_gcs >> load_to_bq
+
+MATERIALIZE_VIEW_QUERY =(
+    f'CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.{table_id}` AS '
+    f'SELECT * FROM `{project_id}.{dataset_id}.{view_id}`'
+)
+
+materialize_view = BigQueryInsertJobOperator(
+    task_id="materialize_view",
+    configuration={
+        "query": {
+            "query": MATERIALIZE_VIEW_QUERY,
+            "useLegacySql": False,
+            "priority": "BATCH",
+        }
+    },
+    gcp_conn_id="google_cloud_default",
+)
+
+
+load_to_gcs >> load_to_bq >> materialize_view

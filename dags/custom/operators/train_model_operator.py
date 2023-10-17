@@ -46,23 +46,31 @@ def generate_sample_data(
 
 
 class Model:
-    def __init__(self, tickers: list[str], x_size: int = 0, y_size: int = 0) -> None:
+    def __init__(self, tickers: list[str], x_size: int = 12, y_size: int = 1) -> None:
         self.tickers = tickers
         self.x_size = x_size
         self.y_size = y_size
         self.models: dict[str, ARIMA] = {}
 
-    def train(self, /, use_generated_data: bool = False, data: pd.DataFrame | None = None,) -> None:
+    def train(self, /, use_generated_data: bool = False, data_str: str | None = None,) -> None:
         if use_generated_data:
             data, _, _ = generate_sample_data(
                 self.tickers, self.x_size, self.y_size
             )
         else:
             """Convert xcom serialised data from string to pd.DataFrame"""
-            data_list = ast.literal_eval(data)
+            print(type(data_str))
+            data_list = ast.literal_eval(data_str)
+            print(type(data_list))
             data = pd.DataFrame(data_list)
+            data = data.head(self.x_size)
+            print(data)
+            print(type(data))
+            print('---END OF DATA PREPARATIONS---')
         for ticker in self.tickers:
-            dataset = data[ticker].values
+            dataset = data[ticker].values.astype(float)
+            print(dataset)
+            print(type(dataset))
             model = ARIMA(order=(1, 1, 0), with_intercept=True, suppress_warnings=True)
             model.fit(dataset)
             self.models[ticker] = model
@@ -79,9 +87,9 @@ class TrainModelOperator(BaseOperator):
     """
     Operator to train ML model.
     """
-    template_fields = ("_datetime", "_data")
+    template_fields = ("_datetime", "_data_str")
     
-    def __init__(self, datetime, data, *args, **kwargs):
+    def __init__(self, datetime, data_str, *args, **kwargs):
         """
         Initialize the operator.
 
@@ -90,7 +98,7 @@ class TrainModelOperator(BaseOperator):
         """
         super().__init__(*args, **kwargs)
         self._datetime = datetime
-        self._data = data
+        self._data_str = data_str
 
 
     def execute(self, context):
@@ -99,11 +107,11 @@ class TrainModelOperator(BaseOperator):
         """
 
         model = Model(["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"])
-        model.train(data=self._data)
+        model.train(data_str=self._data_str)
+        # model.train(use_generated_data=True)
         model.save(f'data/models/{self._datetime}')
 
 
-# if __name__ == "__main__":
-#     model = Model(["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"], 12, 1)
-#     model.train()
-#     model.save("data/models/model1")
+if __name__ == "__main__":
+    model = Model(["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"], 12, 1)
+    model.train(use_generated_data=True)
