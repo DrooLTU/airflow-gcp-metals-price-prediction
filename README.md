@@ -13,6 +13,7 @@ ELT pipeline to train price prediction model.
 1. Periodically (hourly) fetches data from https://metalpriceapi.com/ API.
 2. Transforms and stores the data on GCS and Big Query.
 3. Retrieves the data from Big Query for ML training.
+4. Backs up BigQuery and everything in 'data' folder periodically to a coldline GCS bucket.
 
 ## How it works (in-detail)
 
@@ -43,4 +44,11 @@ ELT pipeline to train price prediction model.
 4. Retransform data DAG:
     - Dynamic DAG that runs transformation on all locally stored extracted data.
     - Only use it when full data retransformation is necessary.
+
+5. Data Backup DAG:
+    - All backup data is stored in GCS Coldline versioned bucket set for 20 versions
+    and 90 day expirity. 
+    - Backups the BQ 'rates' table to the GCS.
+    - Compresses 'data' folder.
+    - Uploads the compressed 'data' zip to the GCS.
  

@@ -6,6 +6,7 @@ transformer_lite.egg-info
 .vscode/
 data
 config
+backups
 logs
 plugins
 turing-m2-s4-firebase-adminsdk-exole-07e7cc79ee.json
