@@ -14,7 +14,6 @@ from datetime import timedelta
 default_args = {
     "owner": "Justinas",
     "depends_on_past": False,
-    "start_date": days_ago(1),
     "email_on_failure": False,
     "email_on_retry": False,
     "retries": 2,
@@ -22,10 +21,11 @@ default_args = {
 }
 
 dag = DAG(
-    "get_training_data",
-    schedule_interval=None,
+    "train_model",
+    schedule_interval='@hourly',
     default_args=default_args,
     catchup=False,
+    start_date=days_ago(1),
 )
 
 
@@ -41,21 +41,24 @@ local_filepath = "/data/views/latest_12.json"
 
 check_table_existence = BigQueryTableExistenceSensor(
     task_id='check_table_existence',
+    project_id=project_id,
     dataset_id=dataset_id,
     table_id=table_id,
+    timeout=60,
+    mode="reschedule",
+    poke_interval=60,
 )
 
 
-# NOT NEEDED ATM, MAYBE USE FOR DATASET SCHEDULE???
+# To inspect actual used data on the last run
 
-# extract_and_save_to_gcs_task = BigQueryToGCSOperator(
-#     task_id="extract_and_save_to_gcs",
-#     source_project_dataset_table=f"{project_id}.{dataset_id}.{table_id}",
-#     destination_cloud_storage_uris=[f"gs://t-m2s4-eu/data/latest_12.jsonl"],
-#     export_format="JSONL",
-#     gcp_conn_id="google_cloud_default",
-#     dag=dag,
-# )
+extract_and_save_to_gcs_task = BigQueryToGCSOperator(
+    task_id="extract_and_save_to_gcs",
+    source_project_dataset_table=f"{project_id}.{dataset_id}.{table_id}",
+    destination_cloud_storage_uris=[f"gs://t-m2s4-eu/data/latest_12.jsonl"],
+    gcp_conn_id="google_cloud_default",
+    dag=dag,
+)
 
 
 get_data_from_bigquery = BigQueryGetDataOperator(
@@ -89,7 +92,7 @@ delete_table = BigQueryDeleteTableOperator(
 #     dag=dag,
 # )
 
-check_table_existence >> get_data_from_bigquery >> train_model_task >> delete_table
+check_table_existence >> [extract_and_save_to_gcs_task, get_data_from_bigquery] >> train_model_task >> delete_table
 
 if __name__ == "__main__":
     dag.cli()

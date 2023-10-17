@@ -11,7 +11,6 @@ TRANSFORMED_DATA = Dataset(f'file://opt/airflow/data/datasets/transformed_pm_rat
 default_args = {
     "owner": "Justinas",
     "depends_on_past": False,
-    "start_date": datetime(2023, 10, 13),
     "email_on_failure": False,
     "email_on_retry": False,
     "retries": 2,
@@ -23,6 +22,7 @@ dag = DAG(
     default_args=default_args,
     description="Load data via GCS to BigQuery warehouse when transformed data updates",
     schedule=[TRANSFORMED_DATA],
+    start_date=datetime(2023, 10, 13),
     catchup=False,
 )
 

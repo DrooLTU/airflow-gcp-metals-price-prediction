@@ -45,7 +45,7 @@ dag = DAG(
     "get_pm_rates",
     default_args=default_args,
     description="Get and store the precious metal rates from the API",
-    schedule=None,
+    schedule='@hourly',
     catchup=False,
 )
 
