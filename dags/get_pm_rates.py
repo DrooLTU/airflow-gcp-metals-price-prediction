@@ -169,30 +169,7 @@ transform_new_pm_rates = PythonOperator(
     outlets=[TRANSFORMED_DATA]
 )
 
-#THIS IS REDUNDANT SINCE DATASET IMPLEMENTATION
-sense_transformed_file = FileSensor(
-    task_id="sense_transformed_file",
-    filepath=filepath_transformed,
-    dag=dag,
-    trigger_rule='none_failed_min_one_success',
-    timeout=10,
-    mode="reschedule",
-    poke_interval=10,
-)
-
 
 extracted_data_does_not_exist >> [extract_pm_rates, transform_existing_pm_rates]
 
 extract_pm_rates >> sense_extracted_file >> transform_new_pm_rates
-
-[transform_existing_pm_rates, transform_new_pm_rates] >> sense_transformed_file
-
-
-"""
-Target tasks:
-IF API DATA EXISTS IN DATE/HOUR - DO NOT FETCH DATA
-IF TRANSFORMED DATA EXISTS IN DATE/HOUR - DO NOT TRANSFORM DATA (???)
-
-check_if_data_exists >> ((fetch_and_save_api_data >> bucket_sensor >> get_transform_save_data >> bucket_sensor) or ) 
-
-"""
