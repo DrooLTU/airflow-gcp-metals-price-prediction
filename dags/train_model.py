@@ -22,7 +22,8 @@ default_args = {
 
 dag = DAG(
     "train_model",
-    schedule_interval='@hourly',
+    description="Trains ML with latest 12 records from Big Query table",
+    schedule='@hourly',
     default_args=default_args,
     catchup=False,
     start_date=days_ago(1),
@@ -55,7 +56,7 @@ check_table_existence = BigQueryTableExistenceSensor(
 extract_and_save_to_gcs_task = BigQueryToGCSOperator(
     task_id="extract_and_save_to_gcs",
     source_project_dataset_table=f"{project_id}.{dataset_id}.{table_id}",
-    destination_cloud_storage_uris=[f"gs://t-m2s4-eu/data/latest_12.jsonl"],
+    destination_cloud_storage_uris=[f"gs://t-m2s4-eu/data/latest_12.csv"],
     gcp_conn_id="google_cloud_default",
     dag=dag,
 )
