@@ -5,6 +5,7 @@ from airflow import DAG, Dataset
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.sensors.filesystem import FileSensor
+from airflow.exceptions import AirflowException
 
 
 from datetime import datetime, timedelta
@@ -51,6 +52,14 @@ dag = DAG(
 
 
 def _save_parquet(json_path:str, filename:str, dir:str):
+    """
+    Saves data as a Parquet file.
+    Args:
+      json_path: Path to JSON file to read data from.
+      filename: The name of the file to save.
+      dir: The directory to save the file to.
+    """
+
     table = pa_json.read_json(json_path) 
     pq.write_table(table, f'{dir}{filename}')
 
@@ -74,6 +83,14 @@ def _save_file(filename:str, file_content:str, dir:str):
 
 
 def _check_extracted_does_not_exist(filename: str, dir: str ='') -> bool:
+    """
+    Checks if extracted data for the date/hour exists in case of previous
+    downstream task failure.
+
+    Args:
+      filename: The name of the file to check for.
+      dir: The directory of the file.
+    """
     file_path = os.path.join(dir, filename)
     print(file_path)
 
@@ -83,7 +100,14 @@ def _check_extracted_does_not_exist(filename: str, dir: str ='') -> bool:
     return "extract_pm_rates"
 
 
-def _extract_pm_rates(base: str, symbols: List[str], **kwargs) -> None:
+def _extract_pm_rates(base: str, symbols: List[str]) -> None:
+    """
+    Makes the API call to get the data and saves it as JSON on file system.
+
+    Args:
+      base: base symbol for the prices (USD).
+      symbols: symbol list to get the prices for (XAU, EUR, XPT, ...).
+    """
     session = requests.Session()
     symbols_str = ",".join(symbols)
     url = f"{base_url}?api_key={API_KEY}&base={base}&currencies={symbols_str}"
@@ -96,34 +120,43 @@ def _extract_pm_rates(base: str, symbols: List[str], **kwargs) -> None:
         file_name = f"{datetime_object.strftime('%Y-%m-%d-%H')}.json"
 
         _save_file(file_name, response.text, "/opt/airflow/data/extracted")
+    
+    else:
+       raise AirflowException(f"Invalid response code, expected 200, got {response.status_code}") 
 
 
 def _transform_pm_rates(filename: str):
     """
-    Divide one by the rate to get reverse for base symbol (price for one troy ounce).
+    Reads the extracted data file (JSON) and does data wrangling.
+    Divide one by the rate to get price for one troy ounce for the base symbol.
+    Saves transformed data to file system and as Parquet dataset for further processing.
+
+    Args:
+      filename: The name of the data file.
     """
-    with open(filename, "r") as f:
-        json_data = json.load(f)
-        rates = json_data['rates']
-        timestamp = json_data['timestamp']
-        datetime_object = datetime.fromtimestamp(timestamp)
-        transformed_data = {'data_datetime': datetime_object.isoformat()}
-        base = json_data['base']
-        
-        print(rates)
-        for rate, val in rates.items():
-            transformed_data[f'{rate}{base}'] = 1 / val
-            print(f'rate: {rate}, val: {val}')
+    if filename.endswith('.json'):
+        with open(filename, "r") as f:
+            json_data = json.load(f)
+            rates = json_data['rates']
+            timestamp = json_data['timestamp']
+            datetime_object = datetime.fromtimestamp(timestamp)
+            transformed_data = {'data_datetime': datetime_object.isoformat()}
+            base = json_data['base']
+            
+            print(rates)
+            for rate, val in rates.items():
+                transformed_data[f'{rate}{base}'] = 1 / val
+                print(f'rate: {rate}, val: {val}')
 
-        #BACKUP STORE
-        file_name = f"{datetime_object.strftime('%Y-%m-%d-%H')}.json"
-        _save_file(file_name, json.dumps(transformed_data), "/opt/airflow/data/transformed")
+            file_name = f"{datetime_object.strftime('%Y-%m-%d-%H')}.json"
+            _save_file(file_name, json.dumps(transformed_data), "/opt/airflow/data/transformed")
 
-        #DATASET STORE
-        _save_parquet(f'/opt/airflow/data/transformed/{file_name}', 'transformed_pm_rates.parquet', '/opt/airflow/data/datasets/')
+            _save_parquet(f'/opt/airflow/data/transformed/{file_name}', 'transformed_pm_rates.parquet', '/opt/airflow/data/datasets/')
+    
+    else:
+        raise AirflowException(f"Unsupported file format passed, expected JSON, got {filename.split('.')[-1]}")
 
 
-#THIS IS NEEDE FOR NOW TO COMPENSATE FOR TIME DIFF, NEED BETTER SOLUTION
 adjusted_dth = datetime.now() - timedelta(hours=1)
 adjusted_dth_str = adjusted_dth.strftime('%Y-%m-%d-%H')
 filepath = f'/opt/airflow/data/extracted/{adjusted_dth_str}.json'
