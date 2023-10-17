@@ -2,24 +2,21 @@ from airflow import DAG
 from airflow.providers.google.cloud.transfers.bigquery_to_gcs import (
     BigQueryToGCSOperator,
 )
-from airflow.providers.google.cloud.transfers.gcs_to_local import (
-    GCSToLocalFilesystemOperator,
-)
+
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 from airflow.providers.google.cloud.operators.bigquery import BigQueryGetDataOperator
-from airflow.operators.python import PythonOperator
+
+from custom.operators.train_model_operator import TrainModelOperator
 from airflow.utils.dates import days_ago
 
-# Define your DAG
+
+
 dag = DAG(
     "get_training_data",
-    schedule_interval=None,  # Set your desired schedule interval
-    start_date=days_ago(1),  # Set the start date
+    schedule_interval=None,
+    start_date=days_ago(1),
     catchup=False,
 )
-
-def _preprocess_data(data):
-    print(data)
 
 
 # Define the parameters for the BigQueryGetDataOperator
@@ -52,6 +49,7 @@ materialize_view = BigQueryInsertJobOperator(
     gcp_conn_id="google_cloud_default",
 )
 
+
 extract_and_save_to_gcs_task = BigQueryToGCSOperator(
     task_id="extract_and_save_to_gcs",
     source_project_dataset_table=f"{project_id}.{dataset_id}.{table_id}",
@@ -61,6 +59,7 @@ extract_and_save_to_gcs_task = BigQueryToGCSOperator(
     dag=dag,
 )
 
+
 get_data_from_bigquery = BigQueryGetDataOperator(
     task_id='get_data_from_bigquery',
     dataset_id=dataset_id,
@@ -69,10 +68,11 @@ get_data_from_bigquery = BigQueryGetDataOperator(
     as_dict=True,
 )
 
-preprocess_data_task = PythonOperator(
-    task_id='preprocess_data',
-    python_callable=_preprocess_data,
-    op_kwargs={'data': '{{ task_instance.xcom_pull(task_ids="get_data_from_bigquery") }}'} # Passes the output of the previous task as an argument to this task
+
+train_model_task = TrainModelOperator(
+    task_id = 'train_model_task',
+    datetime='{{ds}}',
+    data='{{ task_instance.xcom_pull(task_ids="get_data_from_bigquery") }}',
 )
 
 # download_task = GCSToLocalFilesystemOperator(
@@ -85,7 +85,7 @@ preprocess_data_task = PythonOperator(
 # )
 
 materialize_view >> extract_and_save_to_gcs_task
-extract_and_save_to_gcs_task >> get_data_from_bigquery >> preprocess_data_task
+extract_and_save_to_gcs_task >> get_data_from_bigquery >> train_model_task
 
 if __name__ == "__main__":
     dag.cli()

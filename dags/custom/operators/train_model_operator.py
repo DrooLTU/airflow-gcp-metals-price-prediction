@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from sktime.forecasting.arima import ARIMA
+import ast
+
 
 rng = np.random.default_rng()
 
@@ -44,20 +46,21 @@ def generate_sample_data(
 
 
 class Model:
-    def __init__(self, tickers: list[str], x_size: int, y_size: int) -> None:
+    def __init__(self, tickers: list[str], x_size: int = 0, y_size: int = 0) -> None:
         self.tickers = tickers
         self.x_size = x_size
         self.y_size = y_size
         self.models: dict[str, ARIMA] = {}
 
-    def train(self, /, use_generated_data: bool = False) -> None:
+    def train(self, /, use_generated_data: bool = False, data: pd.DataFrame | None = None,) -> None:
         if use_generated_data:
             data, _, _ = generate_sample_data(
                 self.tickers, self.x_size, self.y_size
             )
         else:
-            """This is where I plug my data retrieval from BigQuery?"""
-            raise NotImplementedError
+            """Convert xcom serialised data from string to pd.DataFrame"""
+            data_list = ast.literal_eval(data)
+            data = pd.DataFrame(data_list)
         for ticker in self.tickers:
             dataset = data[ticker].values
             model = ARIMA(order=(1, 1, 0), with_intercept=True, suppress_warnings=True)
@@ -76,9 +79,9 @@ class TrainModelOperator(BaseOperator):
     """
     Operator to train ML model.
     """
-    template_fields = ("_datetime")
+    template_fields = ("_datetime", "_data")
     
-    def __init__(self, datetime, *args, **kwargs):
+    def __init__(self, datetime, data, *args, **kwargs):
         """
         Initialize the operator.
 
@@ -87,6 +90,7 @@ class TrainModelOperator(BaseOperator):
         """
         super().__init__(*args, **kwargs)
         self._datetime = datetime
+        self._data = data
 
 
     def execute(self, context):
@@ -94,12 +98,12 @@ class TrainModelOperator(BaseOperator):
         Execute the operator.
         """
 
-        model = Model(["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"], 12, 1)
-        model.train()
-        model.save("data/models/model1")
+        model = Model(["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"])
+        model.train(data=self._data)
+        model.save(f'data/models/{self._datetime}')
 
 
-if __name__ == "__main__":
-    model = Model(["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"], 12, 1)
-    model.train()
-    model.save("data/models/model1")
+# if __name__ == "__main__":
+#     model = Model(["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"], 12, 1)
+#     model.train()
+#     model.save("data/models/model1")
