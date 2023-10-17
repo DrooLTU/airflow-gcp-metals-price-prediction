@@ -76,9 +76,9 @@ class TrainModelOperator(BaseOperator):
     """
     Operator to train ML model.
     """
-    template_fields = ()
+    template_fields = ("_datetime")
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, datetime, *args, **kwargs):
         """
         Initialize the operator.
 
@@ -86,6 +86,7 @@ class TrainModelOperator(BaseOperator):
 
         """
         super().__init__(*args, **kwargs)
+        self._datetime = datetime
 
 
     def execute(self, context):
@@ -93,10 +94,12 @@ class TrainModelOperator(BaseOperator):
         Execute the operator.
         """
 
+        model = Model(["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"], 12, 1)
+        model.train()
+        model.save("data/models/model1")
+
 
 if __name__ == "__main__":
-    # sample_list = ['XAUUSD', 'PALUSD', 'SVRUSD']
-    # print(generate_sample_data(sample_list, 40, 2))
     model = Model(["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"], 12, 1)
-    model.train(use_generated_data=True)
+    model.train()
     model.save("data/models/model1")
