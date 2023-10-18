@@ -2,6 +2,7 @@ from airflow import DAG, Dataset
 from airflow.providers.google.cloud.transfers.local_to_gcs import LocalFilesystemToGCSOperator
 from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
+from airflow.models import Variable
 
 from datetime import datetime, timedelta
 
@@ -35,13 +36,18 @@ load_to_gcs = LocalFilesystemToGCSOperator(
     dag=dag
 )
 
-#PROLLY NEED A SENSOR HERE AS A GUARANTEE
+
+project_id = Variable.get("gcp_default_project_id")
+dataset_id = Variable.get("bq_main_dataset")
+main_table_id = Variable.get("bq_main_table")
+latest_table_id = Variable.get("bq_latest_12_table")
+view_id = Variable.get("bq_latest_12_view")
 
 load_to_bq = GCSToBigQueryOperator(
     task_id='load_to_bq',
     bucket='t-m2s4-eu',
     source_objects=['data/transformed.parquet'],
-    destination_project_dataset_table='turing-m2-s4.precious_metals.rates',
+    destination_project_dataset_table=f'{project_id}.{dataset_id}.{main_table_id}',
     source_format='Parquet',
     write_disposition="WRITE_APPEND",
     schema_fields=[
@@ -55,16 +61,9 @@ load_to_bq = GCSToBigQueryOperator(
     dag=dag
 )
 
-#PROLLY MOVE VIEW MATERIALISATION HERE AND SET UP A SENSOR FOR THE TABLE ON TRAINER DAG
-# Convert to Variables maybe
-project_id = "turing-m2-s4"
-dataset_id = "precious_metals"
-table_id = "latest_12_table"
-view_id = "latest_12"
-
 
 MATERIALIZE_VIEW_QUERY =(
-    f'CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.{table_id}` AS '
+    f'CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.{latest_table_id}` AS '
     f'SELECT * FROM `{project_id}.{dataset_id}.{view_id}`'
 )
 
@@ -77,7 +76,6 @@ materialize_view = BigQueryInsertJobOperator(
             "priority": "BATCH",
         }
     },
-    gcp_conn_id="google_cloud_default",
 )
 
 
