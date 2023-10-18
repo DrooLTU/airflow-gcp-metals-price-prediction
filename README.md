@@ -1,6 +1,7 @@
 # Precious metals price ML model trainer
 
-ELT pipeline to train price prediction model.
+Airflow ELT pipeline to train price prediction model.
+
 
 ## Tech Stack
 
@@ -9,11 +10,19 @@ ELT pipeline to train price prediction model.
 - Google Cloud Storage
 - BigQuery
 
+
+## What it does
+
+- Produces ARIMA ML models for "XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD" tickers. 
+
+
 ## How it works (brief)
+
 1. Periodically (hourly) fetches data from https://metalpriceapi.com/ API.
 2. Transforms and stores the data on GCS and Big Query.
 3. Retrieves the data from Big Query for ML training.
 4. Backs up BigQuery and everything in 'data' folder periodically to a coldline GCS bucket.
+
 
 ## How it works (in-detail)
 
