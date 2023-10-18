@@ -2,11 +2,11 @@ import shutil
 import os
 
 from airflow import DAG
-
 from airflow.providers.google.cloud.transfers.bigquery_to_gcs import BigQueryToGCSOperator
 from airflow.providers.google.cloud.transfers.local_to_gcs import LocalFilesystemToGCSOperator
 from airflow.operators.python import PythonOperator
 from airflow.exceptions import AirflowException
+from airflow.models import Variable
 
 from datetime import datetime, timedelta
 
@@ -21,7 +21,6 @@ default_args = {
     "retry_delay": timedelta(minutes=5),
 }
 
-
 dag = DAG(
     "backup_data",
     default_args=default_args,
@@ -30,9 +29,15 @@ dag = DAG(
     catchup=False,
 )
 
+
+project_id = Variable.get("gcp_default_project_id")
+dataset_id = Variable.get("bq_main_dataset")
+main_table_id = Variable.get("bq_main_table")
+bucket = Variable.get("gcs_backup_bucket")
 output_path = '/opt/airflow/backups/'
 zip_file_name = 'data_backup'
 output_zip_file = os.path.join(output_path, f'{zip_file_name}.zip')
+
 
 def _zip_folder(folder_path:str = '/opt/airflow/data', output_path:str = output_path, filename:str = zip_file_name):
     """
@@ -55,19 +60,9 @@ def _zip_folder(folder_path:str = '/opt/airflow/data', output_path:str = output_
     shutil.make_archive(output_zip, 'zip', folder_path)
 
 
-
-# Convert to Variables maybe
-project_id = "turing-m2-s4"
-dataset_id = "precious_metals"
-table_id = "rates"
-
-#COLDLINE VERSIONED BUCKET (20 versions, 90 days expirity)
-#NO NEED TO CARE ABOUT TIMESTAMPS AND HANDLING BACKUP COUNT
-bucket = "t-m2s4-backups"
-
 bigquery_backup_task = BigQueryToGCSOperator(
     task_id="bigquery_backup_task",
-    source_project_dataset_table=f"{project_id}.{dataset_id}.{table_id}",
+    source_project_dataset_table=f"{project_id}.{dataset_id}.{main_table_id}",
     destination_cloud_storage_uris=[f"gs://{bucket}/bq/bq_backup.csv"],
     dag=dag,
 )
