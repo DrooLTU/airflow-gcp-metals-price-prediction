@@ -106,7 +106,7 @@ To run this project locally, follow these steps:
     - You have to generate a service account key JSON file.
     - Do not forget to set up IAM principles for the service account, fastest way would be
     giving Big Query Admin and Storage Admin roles.
-    - Create a GCP connection with the following:
+    - Create a GCP connection in Airflow with the following:
         - Conn id: ```google_cloud_default```
         - Keyfile path: ```path/to/service_account.json```, eg: ```/opt/airflow/config/service_account.json```.
             This would mean you have to place your file in the ```config``` folder that's at the root of project folder.
