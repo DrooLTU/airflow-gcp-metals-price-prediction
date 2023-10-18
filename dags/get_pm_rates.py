@@ -154,7 +154,7 @@ def _transform_pm_rates(filename: str):
             _save_parquet(f'/opt/airflow/data/transformed/{file_name}', 'transformed_pm_rates.parquet', '/opt/airflow/data/datasets/')
     
     else:
-        raise AirflowException(f"Unsupported file format passed, expected JSON, got {filename.split('.')[-1]}")
+        raise AirflowException(f"Unsupported file format, expected JSON, got {filename.split('.')[-1]}")
 
 
 adjusted_dth = datetime.now() - timedelta(hours=1)
