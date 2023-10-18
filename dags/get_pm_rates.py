@@ -54,6 +54,7 @@ dag = DAG(
 def _save_parquet(json_path:str, filename:str, dir:str):
     """
     Saves data as a Parquet file.
+
     Args:
       json_path: Path to JSON file to read data from.
       filename: The name of the file to save.
@@ -65,7 +66,8 @@ def _save_parquet(json_path:str, filename:str, dir:str):
 
 
 def _save_file(filename:str, file_content:str, dir:str):
-    """Saves a file to the specified directory.
+    """
+    Saves a file to the specified directory.
 
     Args:
       filename: The name of the file to save.

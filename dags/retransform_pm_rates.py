@@ -32,6 +32,15 @@ dag = DAG(
 
 
 def _save_parquet(json_path: str, filename: str, dir: str):
+    """
+    Saves data as a Parquet file.
+
+    Args:
+      json_path: Path to JSON file to read data from.
+      filename: The name of the file to save.
+      dir: The directory to save the file to.
+    """
+    
     if json_path.endswith('.json'):
         table = pa_json.read_json(json_path)
         output_path = os.path.join(dir, filename + '.parquet')
@@ -72,6 +81,9 @@ def _save_file(filename:str, file_content:str, dir:str):
 def _transform_pm_rates(file_path: str):
     """
     Divide one by the rate to get reverse for base symbol (price for one troy ounce).
+
+    Args:
+      file_path: The path of the file to read data from.
     """
     with open(file_path, "r") as f:
         json_data = json.load(f)
