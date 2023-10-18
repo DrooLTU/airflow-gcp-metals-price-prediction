@@ -1,0 +1,9 @@
+{
+    "bq_latest_12_table": "latest_12_table",
+    "bq_latest_12_view": "latest_12",
+    "bq_main_dataset": "precious_metals",
+    "bq_main_table": "rates",
+    "gcp_default_project_id": "turing-m2-s4",
+    "gcs_backup_bucket": "t-m2s4-backups",
+    "pm_api_key": "YOURAPIKEY"
+}
