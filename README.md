@@ -61,3 +61,53 @@ Airflow ELT pipeline to train price prediction model.
     - Compresses 'data' folder.
     - Uploads the compressed 'data' zip to the GCS.
  
+
+## Getting Started
+
+To run this project locally, follow these steps:
+
+1. **Clone the Repository:**
+
+   ```bash
+   git clone https://github.com/TuringCollegeSubmissions/jukaral-DE2.4.git
+   ```
+
+2. **Navigate to the Project Directory:**
+
+    ```bash
+    cd jukaral-DE2.4
+    ```
+
+3. **Start the Docker Containers:**
+    - Run the following command in your terminal, from the root of the project:
+
+    ```bash
+    docker compose up
+    ```
+
+4. **Variables and connections:**
+    - With the container running - create the default filesystem (fs) connection with the following:
+        - Conn id: ```fs_default```
+        - Leave everything else blank.
+
+    - Import the provided default 'variables.json' to your Variables for quick start.
+    You'll have to edit them as needed.
+
+5. **Set up your GCP project:**
+    - This pipeline utilises GCP (Big Query and GCS).
+    - It is suggested to create two GCS buckets: one for production data and one for backups.
+    - Create a dataset and a table for the data.
+    - Create a view with the name of ```latest_12``` with the following query:
+    
+    ```sql
+    SELECT * FROM `your_project.your_dataset.your_data_table` ORDER BY data_datetime DESC LIMIT 12
+    ```
+
+    - You have to generate a service account key JSON file.
+    - Do not forget to set up IAM principles for the service account, fastest way would be
+    giving Big Query Admin and Storage Admin roles.
+    - Create a GCP connection with the following:
+        - Conn id: ```google_cloud_default```
+        - Keyfile path: ```path/to/service_account.json```, eg: ```/opt/airflow/config/service_account.json```.
+            This would mean you have to place your file in the ```config``` folder that's at the root of project folder.
+    - Do not forget to edit the Variables according to your bucket and table namings.
