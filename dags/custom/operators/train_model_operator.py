@@ -27,7 +27,13 @@ def generate_integrated_autocorrelated_series(
 def generate_sample_data(
     cols: list[str], x_size: int, y_size: int
 ) -> tuple[pd.DataFrame, pd.DataFrame, tuple[np.ndarray, np.ndarray]]:
-    """Generates sample training and test data for specified columns. The data consists of autocorrelated series, each created with randomly generated autoregression coefficients and means. The method also returns the generated autocorrelation coefficients and means for reference. 'x_size' determines the length of the training set, and 'y_size' determines the length of the test set. 'cols' determines the names of the columns."""
+    """
+    Generates sample training and test data for specified columns.
+    The data consists of autocorrelated series, each created with randomly generated autoregression coefficients and means.
+    The method also returns the generated autocorrelation coefficients and means for reference.
+    'x_size' determines the length of the training set, and 'y_size' determines the length of the test set.
+    'cols' determines the names of the columns.
+    """
     ar_coefficients = rng.uniform(AR_LOWER, AR_UPPER, len(cols))
     means = rng.uniform(MEAN_LOWER, MEAN_UPPER, len(cols))
     full_dataset = pd.DataFrame.from_dict(
@@ -46,36 +52,54 @@ def generate_sample_data(
 
 
 class Model:
+
     def __init__(self, tickers: list[str], x_size: int = 12, y_size: int = 1) -> None:
+        """
+        Initialize a Model object.
+
+        Parameters:
+            tickers (list[str]): A list of ticker symbols.
+            x_size (int, optional): The size of the input data (default is 12).
+            y_size (int, optional): The size of the output data (default is 1).
+        """
         self.tickers = tickers
         self.x_size = x_size
         self.y_size = y_size
         self.models: dict[str, ARIMA] = {}
 
-    def train(self, /, use_generated_data: bool = False, data_str: str | None = None,) -> None:
+    def train(
+        self,
+        /,
+        use_generated_data: bool = False,
+        data_str: str | None = None,
+    ) -> None:
+        """
+        Train the model using data.
+
+        Parameters:
+            use_generated_data (bool, optional): Whether to use generated data (default is False).
+            data_str (str | None, optional): A string containing data or None if not using generated data.
+        """
         if use_generated_data:
-            data, _, _ = generate_sample_data(
-                self.tickers, self.x_size, self.y_size
-            )
+            data, _, _ = generate_sample_data(self.tickers, self.x_size, self.y_size)
         else:
-            """Convert xcom serialised data from string to pd.DataFrame"""
-            print(type(data_str))
             data_list = ast.literal_eval(data_str)
-            print(type(data_list))
             data = pd.DataFrame(data_list)
             data = data.head(self.x_size)
-            print(data)
-            print(type(data))
-            print('---END OF DATA PREPARATIONS---')
+
         for ticker in self.tickers:
             dataset = data[ticker].values.astype(float)
-            print(dataset)
-            print(type(dataset))
             model = ARIMA(order=(1, 1, 0), with_intercept=True, suppress_warnings=True)
             model.fit(dataset)
             self.models[ticker] = model
 
     def save(self, path_to_dir: str | Path) -> None:
+        """
+        Save the trained models to a directory.
+
+        Parameters:
+            path_to_dir (str | Path): The directory path where models will be saved.
+        """
         path_to_dir = Path(path_to_dir)
         path_to_dir.mkdir(parents=True, exist_ok=True)
         for ticker in self.tickers:
@@ -87,19 +111,20 @@ class TrainModelOperator(BaseOperator):
     """
     Operator to train ML model.
     """
+
     template_fields = ("_datetime", "_data_str")
-    
-    def __init__(self, datetime, data_str, *args, **kwargs):
+
+    def __init__(self, datetime: str, data_str: str, *args, **kwargs):
         """
         Initialize the operator.
 
         Args:
-
+        datetime: Datetime string for file/folder naming. (Templatable)
+        data_str: Xcom serialized data (str). (Templatable)
         """
         super().__init__(*args, **kwargs)
         self._datetime = datetime
         self._data_str = data_str
-
 
     def execute(self, context):
         """
@@ -108,10 +133,10 @@ class TrainModelOperator(BaseOperator):
 
         model = Model(["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"])
         model.train(data_str=self._data_str)
-        # model.train(use_generated_data=True)
-        model.save(f'data/models/{self._datetime}')
+        model.save(f"data/models/{self._datetime}")
 
 
-if __name__ == "__main__":
-    model = Model(["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"], 12, 1)
-    model.train(use_generated_data=True)
+# if __name__ == "__main__":
+#     """FOR TESTING PURPOSES"""
+#     model = Model(["XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"], 12, 1)
+#     model.train(use_generated_data=True)
